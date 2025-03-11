@@ -1,0 +1,102 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: jamesdev0502
+# "service" is the name of this project. This will also be added to your AWS resource names.
+service: coffee-shop-api
+
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'} # Default to dev if no stage provided
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:Scan
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [OrdersTable, Arn]
+
+custom:
+  tableName: ${self:service}-orders-${self:provider.stage}
+  serverless-offline:
+    isOffline: true
+  dynamodb:
+    start:
+      migrate: true  # Automatically create tables
+      seed: true     # Optional: Seed data
+    stages:
+      - dev
+
+functions:
+  createOrder:
+    handler: src/handlers/createOrder.handler
+    events:
+      - http:
+          path: orders
+          method: post
+          cors: true
+  getOrder:
+    handler: src/handlers/getOrder.handler
+    events:
+      - http:
+          path: orders/{orderId}
+          method: get
+          cors: true
+  listOrders:
+    handler: src/handlers/listOrders.handler
+    events:
+      - http:
+          path: orders
+          method: get
+          cors: true
+  updateOrder:
+    handler: src/handlers/updateOrder.handler
+    events:
+      - http:
+          path: orders/{orderId}
+          method: put
+          cors: true
+  deleteOrder:
+    handler: src/handlers/deleteOrder.handler
+    events:
+      - http:
+          path: orders/{orderId}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    OrdersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: orderId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: orderId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        
+plugins:
+  - serverless-offline
+  - serverless-dynamodb
+
+package:
+  exclude:
+    - node_modules/**
+    - .git/**
+    - coverage/**
+    - test/**
+    - docs/**
+    - logs/**
+  individually: true
