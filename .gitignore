@@ -1,0 +1,7 @@
+node_modules/
+.dynamodb/
+.serverless
+dist/
+.env
+.aws/
+.DS_Store
